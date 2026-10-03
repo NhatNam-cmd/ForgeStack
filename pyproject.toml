@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forgestack"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "PyYAML==6.0.3"
+]
+
+[project.scripts]
+forgestack = "forgestack.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

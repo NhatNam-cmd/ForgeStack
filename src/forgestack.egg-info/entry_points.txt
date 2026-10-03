@@ -1,0 +1,2 @@
+[console_scripts]
+forgestack = forgestack.cli:main

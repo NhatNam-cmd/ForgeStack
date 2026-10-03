@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+src/forgestack/__init__.py
+src/forgestack/cli.py
+src/forgestack/inventory.py
+src/forgestack/node.py
+src/forgestack.egg-info/PKG-INFO
+src/forgestack.egg-info/SOURCES.txt
+src/forgestack.egg-info/dependency_links.txt
+src/forgestack.egg-info/entry_points.txt
+src/forgestack.egg-info/requires.txt
+src/forgestack.egg-info/top_level.txt
