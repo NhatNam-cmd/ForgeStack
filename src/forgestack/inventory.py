@@ -18,9 +18,15 @@ def load_nodes(path: str) -> list[Node]:
                 f"Node '{node_name}' is missing 'address'"
             )
 
+        if "user" not in item:
+            node_name = item.get("name", "<unknown")
+            raise ValueError(
+                f"Node '{node_name}' is missing 'user'"
+            )
         node = Node(
             name=item["name"],
-            address=item["address"]
+            address=item["address"],
+            user=item["user"]
         )
         nodes.append(node)
 

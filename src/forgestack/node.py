@@ -5,3 +5,4 @@ from dataclasses import dataclass
 class Node:
     name: str
     address: str
+    user: str
