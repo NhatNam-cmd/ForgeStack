@@ -4,9 +4,10 @@ ForgeStack is a small infrastructure platform for deploying and operating worklo
 
 ## Project Status
 
-**Module 1 — Node Management** is in progress. M1-S1 (inventory and CLI) and M1-S2 (SSH access checks) are complete; M1-S3 (identity, failure handling, and acceptance tests) is next.
-
-The current lab uses two Ubuntu Server VMs on VirtualBox.
+**Module 1 — Node Management** is in progress. M1-S1 and M1-S2
+(core scope) are complete. M1-S3 has implemented inventory fault
+isolation, validation warnings, and CLI exit codes, with six manual
+acceptance checks passed. Final review and commit are pending.
 
 ## Current Capabilities
 
@@ -15,6 +16,7 @@ The current lab uses two Ubuntu Server VMs on VirtualBox.
 - List configured nodes using the `nodes` command.
 - Check SSH access using the `status` command and report a status with a reason.
 - Report missing inventory files or required node fields.
+- Skip invalid inventory records while reporting warnings and returning a non-zero exit code.
 
 **SSH status meanings:** `REACHABLE` (remote command succeeded), `AUTH_FAILED` (authentication rejected), `TIMEOUT` (process time limit exceeded), and `ERROR` (other check failures).
 
@@ -48,7 +50,7 @@ node-b       192.168.1.32     REACHABLE      SSH command succeeded
 - Inventory addresses are maintained manually; DHCP changes may make them stale.
 - `status` verifies SSH command execution, not overall node or application health.
 - SSH error classification is basic; timeout and missing-client handling have not yet been exercised in dedicated tests.
-- An invalid inventory entry stops the inventory loader. Independent handling of invalid entries is planned for M1-S3.
+- Invalid node records are skipped with warnings; malformed inventory files return exit code `2`.
 
 ## Documentation
 

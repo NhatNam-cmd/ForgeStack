@@ -1,8 +1,8 @@
 # M1 — Node Management
 
-**Module status:** IN PROGRESS  
-**Completed:** M1-S1, M1-S2 (core scope)  
-**Next:** M1-S3 — Identity, Failure Handling & Acceptance
+**Module status:** IN PROGRESS
+**Completed:** M1-S1, M1-S2 (core scope)
+**Current:** M1-S3 — Final Review & Acceptance
 
 ## Goal and Environment
 
@@ -67,11 +67,16 @@ An SSH check runs the remote `hostname` command using key-based authentication a
 
 ### M1-S3 — Identity, Failure Handling & Acceptance — PLANNED
 
-- [ ] Confirm node identity beyond the current DHCP address; avoid treating an IP as permanent identity.
-- [ ] Test an intentionally offline node while another node remains available.
-- [ ] Improve malformed-inventory handling so one bad entry does not hide valid nodes.
-- [ ] Add repeatable acceptance tests for normal and failure cases.
-- [ ] Review CLI behavior and complete M1 acceptance checks.
+### M1-S3 — Identity, Failure Handling & Acceptance — IN PROGRESS
+
+- [x] Define logical node identity independently of DHCP addresses.
+- [x] Preserve SSH host key verification; do not auto-trust changed keys.
+- [x] Skip invalid inventory records while retaining valid nodes.
+- [x] Detect missing fields and duplicate node names.
+- [x] Return CLI exit code `0` for success and `2` for inventory errors.
+- [x] Verify node failure isolation using an unreachable test address.
+- [x] Pass six manual acceptance checks.
+- [ ] Complete final review and commit.
 
 ## M1 Acceptance Criteria
 
@@ -90,6 +95,10 @@ M1 is complete only when:
 - Node addresses are updated manually if DHCP assignments change.
 - SSH key access must be prepared on the controller and target nodes.
 - The inventory path is supplied with `--inventory`.
-- Invalid inventory records currently stop loading; per-node SSH failures do not.
+- Invalid node records are skipped with warnings; malformed inventory
+  structures are rejected.
+- Stable node identity is defined, but DHCP changes still require manual
+  address updates and SSH trust verification.
+- Intermittent SSH timeouts remain uninvestigated.
 - A successful SSH command does not imply healthy services, workloads, CPU, memory, or disk.
 - M1 does **not** include deployment, monitoring, recovery, containers, agents, a database, or a GUI.
