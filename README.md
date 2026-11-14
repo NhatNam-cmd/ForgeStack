@@ -4,10 +4,17 @@ ForgeStack is a small infrastructure platform for deploying and operating worklo
 
 ## Project Status
 
-**Module 1 — Node Management** is in progress. M1-S1 and M1-S2
-(core scope) are complete. M1-S3 has implemented inventory fault
-isolation, validation warnings, and CLI exit codes, with six manual
-acceptance checks passed. Final review and commit are pending.
+**Module 1 — Node Management:** USABLE.
+
+**Module 2 — Node & Service State:** IN PROGRESS.
+
+M2-S1 is complete. ForgeStack can inspect systemd service
+state across managed nodes using reusable SSH execution,
+normalize the results, and report inspection failures
+without losing other node results.
+
+M2-S2 will introduce listener inspection and application
+health validation..
 
 ## Current Capabilities
 
@@ -17,6 +24,12 @@ acceptance checks passed. Final review and commit are pending.
 - Check SSH access using the `status` command and report a status with a reason.
 - Report missing inventory files or required node fields.
 - Skip invalid inventory records while reporting warnings and returning a non-zero exit code.
+- Execute reusable remote commands through a shared SSH layer.
+- Inspect systemd service state across managed nodes.
+- Preserve raw systemd properties alongside normalized states.
+- Distinguish service inspection failures from stopped services.
+- Continue inspecting other nodes when a remote inspection fails.
+- Run automated regression tests using Python unittest.
 
 **SSH status meanings:** `REACHABLE` (remote command succeeded), `AUTH_FAILED` (authentication rejected), `TIMEOUT` (process time limit exceeded), and `ERROR` (other check failures).
 
@@ -44,15 +57,51 @@ NAME         ADDRESS          STATUS         REASON
 node-a       192.168.1.10     REACHABLE      SSH command succeeded
 node-b       192.168.1.32     REACHABLE      SSH command succeeded
 ```
+Inspect a systemd service across managed nodes:
+
+```powershell
+forgestack --inventory config/nodes.yaml services nginx.service
+```
+
+Example:
+
+```text
+Service: nginx.service
+
+NAME     STATUS       SYSTEMD
+node-a   RUNNING      loaded/active/running
+node-b   NOT_FOUND    not-found/inactive/dead
+```
+
+The service inspection command returns:
+
+- `0`: inspection completed with determined states.
+- `1`: one or more inspections failed or returned unknown state.
+- `2`: invalid inventory or input.
+
+## Tests
+
+Run the automated regression suite:
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+The tests cover SSH execution error handling, service state
+normalization, CLI exit codes, and inspection failure isolation.
 
 ## Current Limitations
 
 - Inventory addresses are maintained manually; DHCP changes may make them stale.
 - `status` verifies SSH command execution, not overall node or application health.
-- SSH error classification is basic; timeout and missing-client handling have not yet been exercised in dedicated tests.
+- SSH timeout and missing-client handling have mocked test
+  coverage; dedicated LIVE tests remain pending.
+- Service inspection currently supports systemd `.service` units.
+- Listener and application health inspection are not implemented yet.
 - Invalid node records are skipped with warnings; malformed inventory files return exit code `2`.
 
 ## Documentation
 
 - [Build Specification](docs/BUILD_SPECIFICATION.md)
 - [M1 — Node Management](docs/modules/M1_NODE_MANAGEMENT.md)
+- [M2 — Node & Service State](docs/modules/M2_NODE_SERVICE_STATE.md)

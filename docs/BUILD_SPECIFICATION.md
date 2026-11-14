@@ -305,8 +305,8 @@ When a major implementation choice has meaningful trade-offs, record it in a Dec
 ```text
 Foundation Phase (F01–F08)         DONE ENOUGH
 
-M1 — Node Management               IN PROGRESS
-M2 — Node & Service State          NOT STARTED
+M1 — Node Management               USABLE
+M2 — Node & Service State          IN PROGRESS
 M3 — Workload Deployment           NOT STARTED
 M4 — Workload Lifecycle            NOT STARTED
 M5 — Placement                     NOT STARTED
