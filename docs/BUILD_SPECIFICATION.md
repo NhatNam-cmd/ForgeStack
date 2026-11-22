@@ -1,342 +1,263 @@
 # ForgeStack Build Specification
 
-**Status:** Source of truth for product outcomes  
-**Purpose:** Define what ForgeStack must eventually be able to do without locking the implementation too early.
+**Status:** Proposed specification for the discovery-first direction (F14). Review against the repository before adopting as the implementation source of truth.
 
-> **Lock outcomes, not implementation.**
+**Purpose:** Define verifiable product outcomes and boundaries without prematurely fixing implementation details.
+
+> Lock outcomes, not implementation. Preserve working capabilities and evidence as the product evolves.
+
+**Product direction:** [PRODUCT_DIRECTION.md](PRODUCT_DIRECTION.md)
 
 ## 1. Product Contract
 
-ForgeStack is a lightweight multi-node infrastructure platform for **deploying, operating, observing, placing, and recovering workloads across Linux machines**.
+ForgeStack is a lightweight, SSH-first tool for discovering, understanding, and tracking changes in **existing Linux infrastructure**. Its primary audience is people operating their own servers, homelabs, and self-hosted services.
 
-ForgeStack does not exist merely to run an application. Linux, systemd, containers, SSH, and other infrastructure primitives already do that.
+Without deploying or orchestrating workloads, ForgeStack should help an operator answer:
 
-ForgeStack exists to provide a management layer above those primitives so that an operator can answer:
+- Which Linux nodes are known, reachable, and discoverable?
+- What workloads and services are observable on each node, and what state are they in?
+- What network endpoints, runtime details, and relationships can be established from evidence?
+- Which observations are facts, which derive from configuration or inference, and what remains unknown?
+- What changed between two useful observations, and where is data merely missing or collection incomplete?
+- What context can be exported safely to investigate a problem or communicate with another person or external AI assistant?
+- After the operator makes a change, what newly collected evidence verifies the outcome?
 
-- Which nodes exist and are currently usable?
-- Which workloads are running, and where?
-- Is a workload actually healthy?
-- How can a workload be deployed and operated consistently?
-- Which node should receive a workload?
-- What failed: the workload, local runtime/service, node, or network path?
-- What recovery action should be attempted?
-- Was recovery successful?
+ForgeStack must distinguish **availability**, **service/runtime state**, **listener state**, and **application health**; no one signal proves the others.
 
-## 2. Stable Product Outcome
+## 2. Intended Core Experience
 
-ForgeStack Core is complete when it can demonstrate this end-to-end flow:
+The target end-to-end experience is:
 
 ```text
-multiple Linux nodes
-        ↓
-ForgeStack loads their managed identities
-        ↓
-operator submits a workload
-        ↓
-ForgeStack selects or accepts an eligible target node
-        ↓
-workload is deployed and started
-        ↓
-ForgeStack verifies workload health
-        ↓
-operator can inspect and control workload state
-        ↓
-service/process failure is introduced
-        ↓
-ForgeStack detects and handles/reports it
-        ↓
-whole-node failure is introduced
-        ↓
-ForgeStack detects node failure
-        ↓
-workload is recovered/redeployed where possible
-        ↓
-health is verified again
+Existing Linux node(s), accessible via authorized SSH
+                ↓
+Connect and identify targets with minimal configuration
+                ↓
+Collect node, systemd/service, and relevant endpoint evidence
+                ↓
+Normalize findings into understandable infrastructure context
+                ↓
+Record a useful, timestamped observation/snapshot
+                ↓
+Repeat collection and compare meaningful changes
+                ↓
+Export readable, provenance-aware troubleshooting context
+                ↓
+Operator investigates or fixes the problem outside ForgeStack
+                ↓
+Recollect and verify the observed state
 ```
 
-The exact implementation may change.
+This is a product target, not a claim that the complete flow currently exists. Relationships must not be invented to complete a diagram. Start with systemd and Linux nodes; expand to containers only when evidence and demand justify it.
 
-## 3. Core Modules
+## 3. Modules and Capability Outcomes
 
-### M1 — Node Management
-ForgeStack knows which Linux nodes it manages and can identify and report their basic availability reliably.
+Module identifiers M1 and M2 retain continuity with existing work. The old deployment/placement/recovery roadmap is superseded; historical commits and evidence remain valid.
 
-### M2 — Node & Service State
-ForgeStack can collect and normalize useful state from managed nodes and distinguish node reachability, runtime/service state, listener state, and application health where applicable.
+### M1 — Node Access & Inventory
 
-### M3 — Workload Deployment
-ForgeStack can take a valid workload definition/artifact, deploy it to an eligible Linux node, start it, verify it, and report success or failure truthfully.
+ForgeStack can identify configured Linux targets, connect using authorized existing SSH access, distinguish targets reliably, report reachability and connection failures honestly, and preserve compatibility with the existing node inventory and CLI.
 
-### M4 — Workload Lifecycle
-ForgeStack can track and operate deployed workloads through actions such as start, stop, restart, inspect, and remove, while preserving a clear model of desired state versus actual state.
+**Existing foundation:** Previous M1 work is complete according to recorded project evidence. Do not reimplement it merely because product direction changed.
 
-### M5 — Placement
-ForgeStack can make a basic, explainable decision about which eligible node should run a workload using available node/workload information.
+### M2 — Linux Infrastructure Discovery
 
-### M6 — Failure Detection & Recovery
-ForgeStack can distinguish important failure classes, attempt an appropriate recovery action, and verify whether recovery succeeded.
+ForgeStack can collect and normalize useful information about an existing Linux node and its services. The initial scope uses systemd and node-level information; endpoint and workload details are added incrementally where supported by reliable evidence.
 
-### M7 — Remote / Hybrid Infrastructure
-**Stretch module.** Validate that ForgeStack abstractions can extend beyond one local LAN to a remote/cloud-like node while preserving safe and understandable operation.
+- Report node reachability separately from service state.
+- Distinguish service active/inactive/failed/unknown where the underlying evidence supports it.
+- Keep listener and application-health observations separate from service status.
+- Record explicit collection failure, timeout, unsupported capability, and permission-limited results.
+- Prefer targeted, bounded, read-only commands; avoid broad secret/configuration collection.
 
-M7 is not required for ForgeStack Core completion.
+**Existing foundation:** M2-S1 systemd service-state inspection was implemented, tested, documented, and merged. M2 as defined here is not yet complete.
 
-## 4. Module Completion States
+### M3 — Infrastructure Context Model
 
-### NOT STARTED
-The capability does not yet exist.
+ForgeStack can represent discovered entities and evidence-supported relationships coherently across a node or small set of nodes.
 
-### USABLE
-The primary happy path works well enough for another module to depend on it.
+- Record where an observation came from, when it was collected, and how complete it is.
+- Distinguish **observed**, **configured**, **inferred**, and **unknown** information.
+- Support missing relationships without fabricating connectivity or causal dependencies.
+- Preserve stable identity where possible, while allowing IPs, service state, and other attributes to change.
 
-### DONE
-The module has passed its Definition of Done, at least one meaningful failure path, acceptance scenarios, and evidence/documentation requirements.
+This module does not require an automatic dependency graph or visualization at first. A simple structured model is acceptable.
 
-Modules do **not** need to become perfect before dependent work begins.
+### M4 — Snapshots & Change Comparison
+
+ForgeStack can preserve useful observation sets and compare them in a way that is truthful about collection quality.
+
+- Keep snapshot time, source/target, discovery scope, and collection outcome.
+- Identify meaningful changes in comparable observed fields.
+- Treat timeout, permission denial, incomplete discovery, or unsupported collection as **unknown/incomplete**, not automatically as disappearance, shutdown, or deletion.
+- Explain changed, unchanged, newly observed, and not-comparable findings clearly.
+- Permit controlled repeatable tests against known service-state changes.
+
+No always-on daemon, metrics backend, or automated periodic scheduler is required for the initial version.
+
+### M5 — Context Export & Reverification
+
+ForgeStack can produce readable context for an operator, collaborator, or external AI assistant without requiring an AI provider.
+
+- Export a human-readable summary and/or structured representation, with observations, provenance, timestamps, and gaps.
+- Avoid exposing credentials, private keys, tokens, or sensitive configuration values by default.
+- Make clear when exported material is incomplete or stale.
+- Allow recollection after an operator-initiated fix so before/after evidence can be compared.
+- Do not claim that a problem is fixed solely from a successful SSH connection or service-active flag.
+
+## 4. Module Status Definitions
+
+- **NOT STARTED:** No usable implementation exists.
+- **IN PROGRESS:** Partial implementation exists; the defined outcome is not yet met.
+- **USABLE:** A meaningful happy path works and can support a dependent increment; completion gates remain open.
+- **DONE:** Acceptance, failure-path tests, reproducible evidence, and documentation meet the defined scope.
+- **DEFERRED:** A possible extension, not a current completion requirement.
+
+Module status is based on implementation and evidence, not merely the existence of a document or passing isolated unit tests.
 
 ## 5. Common Completion Gates
 
-Every core module must eventually pass all five gates:
+A module is DONE only when the following are satisfied within its explicitly agreed scope:
 
-### 1. Behavior
-A user/operator can perform a useful, observable action.
+1. **Useful behavior:** An operator can obtain an observable, relevant result.
+2. **Truthful evidence:** Facts, interpretations, unknowns, and collection errors are distinguishable.
+3. **Failure handling:** At least one meaningful failure or incomplete-collection path is deliberately tested.
+4. **Safety and compatibility:** Read-only behavior and least privilege are respected; existing supported functionality is not silently broken.
+5. **Verification and documentation:** Reproducible tests or LIVE evidence demonstrate the behavior; the owner can explain inputs, collection logic, normalization, output, and likely failure points.
 
-### 2. Ownership
-ForgeStack owns meaningful control logic or system behavior. The module is not only a collection of manually executed third-party commands.
+LIVE observations from Node A/B and synthetic/unit-test evidence must be labeled distinctly. No status is automatically upgraded based on a planned task.
 
-### 3. Understanding
-The project owner can explain:
+## 6. Definition of Done by Module
 
-```text
-input
-→ ForgeStack logic
-→ infrastructure interaction
-→ output/state
-→ likely failure points
-```
+### M1 — Node Access & Inventory
 
-### 4. Failure
-At least one relevant failure path has been tested deliberately.
+- At least two Linux nodes can be represented and distinguished.
+- Authorized SSH access and basic reachability can be assessed.
+- Invalid or offline nodes do not crash unrelated operations.
+- Existing inventory/CLI behavior remains usable.
+- Manual checks and recorded evidence support results.
 
-### 5. Evidence
-There is runnable code/configuration plus reproducible output, test, or documentation showing that the capability works.
+### M2 — Linux Infrastructure Discovery
 
-## 6. Module-Level Definition of Done
+- Discovery works against at least one reachable Linux target using authorized SSH.
+- Basic node attributes and at least one systemd service have clear, structured results.
+- Service state is not confused with node reachability or application health.
+- Permission/timeout/unsupported cases are represented explicitly.
+- Two-node LIVE checks plus automated regression tests demonstrate repeatability at the agreed initial scope.
 
-### M1 — Node Management
+Further endpoint/listener discovery may be delivered as a later M2 increment; it is not automatically required for F15.
 
-M1 is DONE when:
+### M3 — Infrastructure Context Model
 
-- ForgeStack has a clear representation of a managed node.
-- At least two Linux nodes can be registered/configured.
-- ForgeStack distinguishes Node A and Node B reliably.
-- Basic availability/reachability can be checked.
-- An unavailable or invalid node does not crash the entire operation.
-- User-visible output clearly reports managed node state.
-- Node identity is not based only on one fragile runtime value.
-- The operator can verify ForgeStack's result manually.
-- Acceptance scenarios pass with evidence.
+- Discovered entities can be related using evidence-supported links or references.
+- Each relationship has a clear origin or is explicitly qualified as inferred/unknown.
+- Data from two nodes can coexist without identity collision.
+- Incomplete inputs do not silently produce fabricated relationships.
 
-### M2 — Node & Service State
+### M4 — Snapshots & Change Comparison
 
-M2 is DONE when:
+- Two observations can be saved and compared.
+- A controlled change appears accurately in the comparison.
+- A deliberate collection failure does not appear as a confirmed workload removal.
+- Timestamp, scope, and collection-status limitations are visible.
 
-- ForgeStack can collect useful state from a remote node.
-- Node reachability and workload/service state are not treated as the same thing.
-- ForgeStack can represent at least node reachable/unreachable, runtime/service running/stopped when relevant, and application-level health when a health contract exists.
-- Timeout/error conditions are represented clearly.
-- At least one intentional state mismatch is detected correctly.
-- Operator-visible output is understandable and manually verifiable.
+### M5 — Context Export & Reverification
 
-### M3 — Workload Deployment
+- A readable export shows observed state and relevant uncertainty.
+- Secrets and unneeded sensitive data are omitted or masked by default.
+- Exported context remains useful without AI integration.
+- A controlled operator-initiated change can be checked with new evidence.
 
-M3 is DONE when:
+## 7. Core Acceptance Demonstration
 
-- A real demo workload exists.
-- ForgeStack can deliver/provision that workload to a target node.
-- The workload can be started successfully.
-- A client can use or observe the workload after deployment.
-- ForgeStack knows where the workload was deployed.
-- Deployment success is verified rather than assumed.
-- A failed deployment is not falsely reported as successful.
-- Another person can reproduce the basic deployment from project documentation.
+A complete core demonstration should eventually be able to show:
 
-### M4 — Workload Lifecycle
+1. Start with two Linux nodes already accessible using authorized SSH.
+2. Identify both nodes; show one node or connection failure without crashing the entire run.
+3. Discover basic node attributes and relevant systemd service state.
+4. Show available endpoint evidence and supported relationships without inventing missing links.
+5. Save a timestamped observation with explicit collection completeness.
+6. Change a demo service's state manually in the isolated lab (outside ForgeStack).
+7. Recollect and show a correct, explainable difference.
+8. Simulate an unavailable target; report missing evidence as incomplete/unknown, not proof of deletion.
+9. Export a readable, appropriately sanitized troubleshooting context.
+10. After an operator manually resolves the demo issue, recollect to verify the observed result.
 
-M4 is DONE when:
+The demo proves **discovery and trustworthy context**, not workload deployment, service control, node placement, failover, or autonomous recovery.
 
-- ForgeStack tracks deployed workloads.
-- Core lifecycle operations have defined behavior.
-- Desired state and actual state are represented separately enough to reason about drift/failure.
-- Operations are verified after execution.
-- Invalid operations fail safely and clearly.
-- Restart/reboot scenarios do not cause ForgeStack to silently lose track of managed workloads.
+## 8. Design Principles and Boundaries
 
-### M5 — Placement
+- **Low friction:** Use existing SSH credentials/configuration and avoid avoidable setup.
+- **Read-only by default:** Discovery never requires write access or service restart.
+- **Evidence first:** Preserve provenance, freshness, missing observations, and uncertainty.
+- **Truthful health model:** SSH reachable, systemd active, TCP listening, and application healthy are different claims.
+- **Small footprint:** Avoid new long-running agents/services unless justified by real usage.
+- **AI independent:** Do not require AI APIs to complete the core workflow.
+- **Practical value:** Prefer reduced investigation effort over dashboards and feature count.
+- **Incremental changes:** Preserve working code and compatibility; refactor only for an identified requirement.
 
-M5 is DONE when:
+## 9. Explicit Non-Goals for the Current Core
 
-- At least two eligible nodes exist.
-- ForgeStack gathers enough state to make a placement decision.
-- A placement policy exists in ForgeStack-owned logic.
-- The decision is explainable.
-- Ineligible nodes are not selected.
-- At least one controlled scenario proves that a different input can lead to a different placement result.
-- Placement behavior can be tested without relying on hidden AI reasoning.
+- Automated workload deployment, start/stop/restart orchestration, or removal.
+- Workload placement, desired-state reconciliation, failover, or autonomous remediation.
+- Replacement of Kubernetes, Ansible, Prometheus, full observability, or configuration management.
+- Production-grade multi-cluster control plane or complex scheduling.
+- Mandatory dashboard, container support, eBPF, graph database, or cloud integration.
+- Secret collection or autonomous production changes.
 
-### M6 — Failure Detection & Recovery
+Possible later extensions include container discovery, periodic collection, deeper telemetry, visual interfaces, remote/hybrid environments, and AI-assisted analysis of exported evidence. These are hypotheses to validate, not commitments.
 
-M6 is DONE when:
-
-- ForgeStack can detect a workload/service failure.
-- ForgeStack can detect a whole-node failure.
-- Those failure classes are not handled identically by default.
-- At least one recovery action exists.
-- Recovery is verified after execution.
-- Failed recovery is reported truthfully.
-- A controlled service/process failure test has been completed.
-- A controlled whole-node failure test has been completed.
-- Before/after incident evidence exists.
-
-### M7 — Remote / Hybrid Infrastructure
-
-M7 is intentionally open-ended and will receive a dedicated DoD only if activated.
-
-Possible goals include:
-
-- adding a remote node;
-- secure remote connectivity;
-- observing latency/reachability differences;
-- validating workload placement/recovery across local and remote infrastructure;
-- documenting operational and cost/complexity trade-offs.
-
-## 7. Core Acceptance Demo
-
-ForgeStack Core should eventually support a demonstration broadly equivalent to:
+## 10. Planning and Change Policy
 
 ```text
-1. Start with at least two Linux nodes.
-2. ForgeStack reports both nodes independently.
-3. Submit/deploy a demo workload.
-4. ForgeStack reports which node hosts it.
-5. Client verifies the workload is usable.
-6. ForgeStack reports workload health/state.
-7. Stop or kill the workload process/service.
-8. ForgeStack detects the failure.
-9. Recover and verify the workload.
-10. Power off or disconnect the hosting node.
-11. ForgeStack detects the node failure.
-12. Recover/redeploy the workload to another eligible node when possible.
-13. Verify that the workload is usable again.
-14. Show evidence explaining what happened.
+Product Direction
+       ↓
+Capability / Module outcome
+       ↓
+Small, testable increment
+       ↓
+LIVE validation + regression checks
+       ↓
+Decision to continue, adjust, or stop
 ```
 
-Exact CLI syntax is not part of this contract.
+Keep user-facing outcomes stable enough to guide implementation, but allow CLI syntax, YAML shape, code organization, storage format, and collection mechanism to evolve **with explicit compatibility decisions**. Record nontrivial tradeoffs in a short decision note.
 
-## 8. Design Principles
+The older spec remains accessible through Git history. Superseded placement and recovery outcomes are not unfinished debts.
 
-- **Behavior before technology:** choose technology because a capability requires it, not because the tool is fashionable.
-- **Existing primitives are allowed:** ForgeStack may use SSH, systemd, containers, Linux tools, libraries, metrics systems, and other infrastructure primitives.
-- **ForgeStack owns control logic:** node/workload models, normalized state, placement, deployment workflow, failure handling, and recovery should contain meaningful project-owned behavior.
-- **Build before over-design:** do not design the entire future architecture before current pain points exist.
-- **Reproducibility matters:** a capability should eventually be repeatable from the repository and documentation.
-- **Evidence over claims:** "works" means there is reproducible evidence.
-- **Least privilege and safe change:** prefer narrow permissions, validation, rollback, and controlled failure tests.
+## 11. Current State — F14 Review Baseline
 
-## 9. Explicit Non-Goals
+Evidence available from the project history and provided Git log:
 
-ForgeStack Core does not aim to:
+- Foundation: two Ubuntu Server nodes with SSH; Node A and Node B previously verified reachable.
+- **M1:** Previously closed as DONE, pending regression verification after the direction update.
+- **M2:** IN PROGRESS; M2-S1 systemd state collection/CLI/tests/docs merged to `main` at `e403a71` (merge), based on the supplied Git history.
+- **M3–M5:** NOT STARTED under this new capability model; no implementation claims.
+- Existing working-tree changes to YAML inventory/test files remain untouched; do not stage them accidentally.
 
-- replace Kubernetes, Nomad, Docker, systemd, SSH, or Linux;
-- support enterprise-scale clusters;
-- provide a production-grade distributed consensus/control plane;
-- provide a GUI;
-- implement every infrastructure primitive itself;
-- maximize feature count;
-- hide infrastructure behavior from the project owner;
-- use AI as a substitute for deterministic core control logic.
+The full codebase has not yet been inspected for F14. Actual command names, data structures, and the precise refactor/no-refactor decision must be validated against the repository.
 
-A feature outside the Product Contract should normally go to the backlog until a real problem justifies it.
+## 12. Next Increment — F15 Discovery Foundation (Proposed)
 
-## 10. Planning Model
+**Goal:** Make one small improvement in generic SSH-first discovery, grounded in the current M1/M2 code and preserving existing behavior.
 
-```text
-Vision
-  ↓
-Module
-  ↓
-Sprint
-  ↓
-Daily Build Task
-```
+**Candidate scope, to finalize after code inspection:**
 
-A module may require multiple sprints.  
-A sprint should normally create one usable product increment in roughly one or two Build Days.  
-A daily task is only an execution step inside the active sprint.
+- Connect to a selected existing inventory target, or add minimal ad hoc SSH target support only if needed.
+- Collect a small, useful set of node facts and relevant systemd service details.
+- Produce one structured, human-readable result with explicit status/provenance.
+- Handle a deliberately offline/invalid target without breaking discovery of reachable targets.
+- Preserve existing CLI, inventory configuration, and M2-S1 regression tests.
+- Verify on real Node A and B, record evidence, and commit only the relevant reviewed files.
 
-## 11. Change Policy
+**Explicitly excluded from F15:** snapshot diff, persistence migration, relationship inference, container discovery, GUI, scheduling, eBPF, remediation, and new deployment/control operations.
 
-### Stable
-These should change rarely:
+**Acceptance:** happy path on both reachable nodes; one controlled failure path; truthful output; no destructive actions; automated regression checks pass; minimal usage documentation and reproducible evidence.
 
-- Product Contract
-- Core Acceptance Demo
-- M1–M6 capability outcomes
-- Common Completion Gates
+F15 is not DONE until those tests are observed. The exact code surface and CLI contract remain open until a targeted repository review.
 
-### Flexible
-These may evolve when evidence justifies it:
+## 13. Core Completion Statement
 
-- programming language;
-- CLI structure;
-- config format;
-- SSH library/transport mechanism;
-- agent vs agentless model;
-- systemd vs container runtime;
-- state persistence;
-- repository structure;
-- monitoring stack;
-- placement algorithm details.
+ForgeStack Core is complete when a person operating existing Linux servers can connect with minimal setup, discover meaningful infrastructure facts, understand supported relationships and uncertainty, preserve and compare observations, export useful context, and recollect evidence after investigating or resolving a problem — **without requiring ForgeStack to deploy, modify, or recover workloads**.
 
-When a major implementation choice has meaningful trade-offs, record it in a Decision Note.
-
-## 12. Current High-Level Status
-
-```text
-Foundation Phase (F01–F08)         DONE ENOUGH
-
-M1 — Node Management               USABLE
-M2 — Node & Service State          IN PROGRESS
-M3 — Workload Deployment           NOT STARTED
-M4 — Workload Lifecycle            NOT STARTED
-M5 — Placement                     NOT STARTED
-M6 — Failure Detection & Recovery  NOT STARTED
-M7 — Remote / Hybrid               STRETCH / NOT STARTED
-```
-
-Current real infrastructure:
-
-```text
-Windows admin/client machine
-
-forgestack-node-a
-- Ubuntu Server
-- SSH
-- nginx
-- Bridged networking
-
-forgestack-node-b
-- Ubuntu Server
-- SSH
-- Bridged networking
-
-Node A ↔ Node B connectivity verified.
-```
-
-## 13. ForgeStack Core Completion Statement
-
-ForgeStack Core is complete when:
-
-> A user can manage multiple Linux nodes, deploy and operate a real workload, observe where and how it is running, make or inspect a basic placement decision, detect meaningful service/node failures, recover the workload when possible, and verify the final state with reproducible evidence.
-
-The implementation may evolve. This outcome is the contract.
+This completion outcome is a hypothesis to validate against real troubleshooting workflows, not a guaranteed product-market fit claim.
