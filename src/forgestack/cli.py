@@ -6,7 +6,7 @@ import yaml
 from .inventory import load_nodes
 from .reachability import check_node
 from .service_state import check_service
-
+from .discovery import discover_node
 
 def print_nodes(nodes):
     print(f"{'NAME':<12} {'ADDRESS'}")
@@ -69,6 +69,49 @@ def print_services(nodes, service: str) -> int:
     return 1 if inspection_failed else 0
 
 
+def print_discovery(nodes) -> int:
+    collection_incomplete = False
+    print("Discovery scope: hostname, kernel, running systemd services\n")
+
+    for node in nodes:
+        result = discover_node(node)
+
+        complete = (
+                result.hostname is not None
+                and result.kernel is not None
+                and result.running_services is not None
+                and not result.errors
+        )
+
+        collection_incomplete = collection_incomplete or not complete
+
+        print(f"Node: {node.name} ({node.address})")
+        print(f"  Collection: {'COMPLETE' if complete else 'INCOMPLETE'}")
+        print(f"  Hostname: {result.hostname or 'UNKNOWN'}")
+        print(f"  Kernel: {result.kernel or 'UNKNOWN'}")
+
+        if result.running_services is None:
+            print("  Running systemd services: UNKNOWN (not collected)")
+        else:
+            print(
+                f"  Running systemd services: "
+                f"{len(result.running_services)} observed"
+            )
+
+            for service in result.running_services:
+                print(f"    - {service.name}: {service.description}")
+
+        if result.errors:
+            print("  Collection errors:")
+
+            for field, reason in result.errors.items():
+                print(f"    - {field}: {reason}")
+
+        print()
+
+    return 1 if collection_incomplete else 0
+
+
 def main():
     parser = argparse.ArgumentParser(prog="forgestack")
 
@@ -102,7 +145,10 @@ def main():
         "service",
         help="Systemd service unit name, e.g. nginx.service"
     )
-
+    subparsers.add_parser(
+        "discover",
+        help="Discover basic node facts and running systemd services"
+    )
     args = parser.parse_args()
 
     try:
@@ -125,7 +171,8 @@ def main():
 
         elif args.command == "services":
             command_exit = print_services(nodes, args.service)
-
+        elif args.command == "discover":
+            command_exit = print_discovery(nodes)
         if errors:
             return 2
 
